@@ -1,0 +1,185 @@
+---
+title: "Linear, Lasso and Ridge Regression"
+author: "Lucas Moraes"
+format: html
+editor: visual
+---
+
+After some time working on projects predominantly in R, I have recently switched to python again. In this post, as a way to store some snippets, I'll pass through the basics regarding Linear Regression and its regularized counterparts (Lasso and Ridge), while checking out some of sklearn functionalities!
+
+# Linear Regression
+
+Linear regression is a simple, yet powerful and fundamental tool in statistics and machine learning.
+
+It can be described with the classical formula:
+
+$$
+\hat{y} = \theta_{0} + \theta_1x_1 + \theta_2x_2 + \theta_3x_3...\theta_nx_n
+$$
+
+Where we have the sum of the noise $\theta_{0}$ and the remaining $x_{n}$ variables and $\theta_{n}$ parameters resulting in our predictor $\hat{y}$.
+
+Here I will use some data fish of a fish market in an attempt to predict weight, based on height and width. I will read, extract and split the data using the code bellow:
+
+```{python}
+import janitor
+import pandas as pd
+import pandas as pd
+import numpy as np
+import os
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+#import sklearn
+
+
+df_raw = pd.read_csv("https://www.dropbox.com/s/n45vml0ayoq0omx/fish.csv?dl=1").clean_names()
+
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+
+y = df_raw['weight']
+X = df_raw[['height','width']]
+        
+x_train, x_test, y_train, y_test = train_test_split(X,y, test_size = 0.2, random_state= 123)
+
+model_pipeline = Pipeline(steps=[('standard_scaler',StandardScaler()),
+                                 ('linear_regression',LinearRegression())])
+
+
+model_pipeline.fit(x_train, y_train) 
+
+y_pred = model_pipeline.predict(x_test)
+```
+
+Afterwards I will prepare a pipeline to perform the regression, scaling the values, adjusting the data and predicting on the test dataset:
+
+```{python}
+
+
+
+model_pipeline = Pipeline(steps=[('standard_scaler',StandardScaler()),
+                                 ('linear_regression',LinearRegression())])
+
+
+model_pipeline.fit(x_train, y_train) 
+
+y_pred = model_pipeline.predict(x_test)
+```
+
+With that in hand, I can check some performance metrics for the model, namely MAE and MAPE:
+
+```{python}
+
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_percentage_error
+
+mean_squared_error(y_test,y_pred)
+mean_absolute_percentage_error(y_test, y_pred)
+```
+
+These two tell me about the mean related to error, but, by manually calculating them, I can check how these are distributed in the sample:
+
+```{python}
+
+df_preds = pd.DataFrame({"y_pred":y_pred,"y_test":y_test}) 
+
+df_preds['abs_error'] = abs((df_preds['y_pred']-df_preds['y_test'])**2)
+df_preds['percentage_error'] = abs(100-(df_preds['y_pred']*100/df_preds['y_test']))/100
+
+df_preds.head()
+```
+
+I can check if these values make sense by taking the mean of each of the new columns:
+
+```{python}
+
+df_preds.abs_error.mean()
+df_preds.percentage_error.mean()
+
+```
+
+Seems just right.
+
+So, how are those distributed in the sample?
+
+Lets checkout the $MAPE$:
+
+```{python}
+import seaborn as sns
+
+sns.kdeplot(df_preds.percentage_error)
+
+plt.show()
+```
+
+Now the relation between predicted values and percentage error:
+
+```{python}
+
+sns.regplot(x=y_test, y=df_preds.percentage_error)
+
+plt.show()
+```
+
+What we can roughly see here, is that most of the values with high percentage errors referred to low observed weight values in the test data set. This kind of analysis can help check which observations in particular have higher error values within the test data set.
+
+# Regularized Linear Regression: Lasso and Ridge.
+
+Here I will compare how the regression perform with and without regularization.
+
+First off, what does regularization actually do? Regularization attempts to reduce the effect of overfitting in the model, by restricting its freedom (literally: degrees of freedom). A common way to do that in linear models, is to restrict the weights of the model.
+
+That happens by choosing a line that fits a little worse on the training data, but generalizes better. This means that although the performance on the training data may be a bit off, the model will predict new data in general, better.
+
+plotar as três retas e dps falar de cada regularização
+
+What weights?
+
+## Ridge regression
+
+Ridge regression works by adding a regulatory term $\alpha\sum_1^n=\theta_i^{2}$ to the cost function. What happens then, is that
+
+```{python}
+
+from sklearn.linear_model import Ridge
+
+y = df_raw['weight']
+X = df_raw[['height','width']]
+        
+x_train, x_test, y_train, y_test = train_test_split(X,y, test_size = 0.2, random_state= 123)
+
+
+model_pipeline = Pipeline(steps=[('standard_scaler',StandardScaler()),
+                                 ('linear_regression',Ridge())])
+
+
+model_pipeline.fit(x_train, y_train) 
+y_pred = model_pipeline.predict(x_test)
+mean_absolute_percentage_error(y_test, y_pred)
+```
+
+# Lasso regression
+
+```{python}
+
+from sklearn.linear_model import Lasso
+
+y = df_raw['weight']
+X = df_raw[['height','width']]
+        
+x_train, x_test, y_train, y_test = train_test_split(X,y, test_size = 0.2, random_state= 123)
+
+
+model_pipeline = Pipeline(steps=[('standard_scaler',StandardScaler()),
+                                 ('linear_regression',Lasso())])
+
+
+model_pipeline.fit(x_train, y_train) 
+
+y_pred = model_pipeline.predict(x_test)
+
+mean_absolute_percentage_error(y_test, y_pred)
+```
